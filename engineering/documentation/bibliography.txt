@@ -1,0 +1,3 @@
+http://www.instructables.com/id/Monochrome-096-i2c-OLED-display-with-arduino-SSD13/
+https://github.com/optimusdigital/Adafruit_SSD1306
+https://github.com/adafruit/Adafruit-GFX-Library
