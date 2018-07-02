@@ -64,6 +64,20 @@ Adafruit_SSD1306 display(OLED_RESET);
 #define T_OFF_MINUTES_EEPROM_ADDRESS 0x04  // store & load adresses
 #define T_OFF_SECONDS_EEPROM_ADDRESS 0x05  // store & load adresses
 
+#define CONFIG_INDEX_T_ON_H_MSD 0
+#define CONFIG_INDEX_T_ON_H_LSD 1
+#define CONFIG_INDEX_T_ON_M_MSD 2
+#define CONFIG_INDEX_T_ON_M_LSD 3
+#define CONFIG_INDEX_T_ON_S_MSD 4
+#define CONFIG_INDEX_T_ON_S_LSD 5
+
+#define CONFIG_INDEX_T_OFF_H_MSD 6
+#define CONFIG_INDEX_T_OFF_H_LSD 7
+#define CONFIG_INDEX_T_OFF_M_MSD 8
+#define CONFIG_INDEX_T_OFF_M_LSD 9
+#define CONFIG_INDEX_T_OFF_S_MSD 10
+#define CONFIG_INDEX_T_OFF_S_LSD 11
+
 unsigned short STATE = STATE_INIT; // state machine
 unsigned short DISPLAY_IS_ON = TRUE;  // display status
 
@@ -74,6 +88,11 @@ unsigned short T_ON_HOURS = DEFAULT_T_ON_HOURS;  // time amount to keep fans tur
 unsigned short T_OFF_SECONDS = DEFAULT_T_OFF_SECONDS;  // time amount to keep fans turned off
 unsigned short T_OFF_MINUTES = DEFAULT_T_OFF_MINUTES;  // time amount to keep fans turned off
 unsigned short T_OFF_HOURS = DEFAULT_T_OFF_HOURS;  // time amount to keep fans turned of
+
+unsigned short CONFIG_INDEX = CONFIG_INDEX_T_ON_H_MSD;
+unsigned short CONFIG_INDEX_SHOWED = TRUE;
+
+unsigned short counter_100_ms = 0;
 
 String INTERNAL_ERROR = "No error";
 
@@ -116,14 +135,27 @@ void setup()
   }
 }
  
-
 void loop() 
 {
-  delay(10);
+  delay(50);
+  counter_100_ms ++;
+  if(counter_100_ms >= 10)
+  {
+    counter_100_ms = 0;
+  }
+  read_buttons();
   switch(STATE)
   {
+    case STATE_ERROR:
+    {
+      break;
+    }
     case STATE_FAN_OFF:
     {
+      if(counter_100_ms > 0)
+      {
+        break;
+      }
       decrease_clock_time();
       if (DISPLAY_IS_ON ==  TRUE)
       {
@@ -137,13 +169,17 @@ void loop()
         display.setCursor(0,0);
         display.print("ACTIVATINGFANS"); 
         display.display();
-        delay(500);
         go_to_state(STATE_FAN_ON);
+        delay(500);
       }
       break;  
     }
     case STATE_FAN_ON:
     {
+      if(counter_100_ms > 0)
+      {
+        break;
+      }
       decrease_clock_time();
       if (DISPLAY_IS_ON ==  TRUE)
       {
@@ -162,11 +198,76 @@ void loop()
       }
       break;  
     }
+    case STATE_CONFIG:
+    {
+      if(DISPLAY_IS_ON)
+      {
+        display_config();
+      }
+      break;
+    }
     default:
     {
+      go_to_state(STATE_INIT);
       break;
     }
   }
+}
+
+void display_config(void)
+{
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0,0);
+  if(CONFIG_INDEX < CONFIG_INDEX_T_OFF_H_MSD)
+  {
+    display.print("Fans ON time:  ");  
+    display.setTextSize(2);
+    display.setCursor(0,12);
+    display.print(T_ON_HOURS / 10);
+    display.print(T_ON_HOURS % 10);
+    display.print(":");
+    display.print(T_ON_MINUTES / 10);
+    display.print(T_ON_MINUTES % 10);
+    display.print(":");
+    display.print(T_ON_SECONDS / 10);
+    display.print(T_ON_SECONDS % 10);
+  }
+  else if (CONFIG_INDEX <= CONFIG_INDEX_T_OFF_S_LSD)
+  {
+    display.print("Fans OFF time:  ");  
+    display.setTextSize(2);
+    display.setCursor(0,12);
+    display.print(T_OFF_HOURS / 10);
+    display.print(T_OFF_HOURS % 10);
+    display.print(":");
+    display.print(T_OFF_MINUTES / 10);
+    display.print(T_OFF_MINUTES % 10);
+    display.print(":");
+    display.print(T_OFF_SECONDS / 10);
+    display.print(T_OFF_SECONDS % 10);
+  }
+  if(CONFIG_INDEX_SHOWED)
+  {
+    CONFIG_INDEX_SHOWED = FALSE;
+  }
+  else
+  {
+    display_config_index();
+    CONFIG_INDEX_SHOWED = TRUE;
+  }
+  display.display();
+}
+
+void display_config_index(void)
+{
+  int config_index_on_display;
+  config_index_on_display = CONFIG_INDEX % 6;
+  config_index_on_display += config_index_on_display / 2;
+  config_index_on_display *= 12;
+  display.setCursor(config_index_on_display,16);
+  display.print("_");
+  
 }
 
 void display_clock(void)
@@ -334,13 +435,22 @@ void go_to_state(unsigned short state)
       CLOCK.is_paused = FALSE;
       break;
     }
+    case STATE_CONFIG:
+    {
+      STATE = STATE_CONFIG;
+      turn_off_fans();
+      reset_clock();
+      CONFIG_INDEX = CONFIG_INDEX_T_ON_H_MSD;
+      break;
+    }
     default:
     {
       STATE = STATE_ERROR;
+      INTERNAL_ERROR = "Invalid state specified!";
       display.setTextSize(1);
       display.clearDisplay();
       display.setCursor(0,0);
-      display.print("Error: undefined state " + state); 
+      display.print("Error: "); 
       display.print(INTERNAL_ERROR); 
       display.display();
     }
@@ -432,5 +542,222 @@ void turn_off_fan_2(void)
 {
   digitalWrite(FAN_2_PIN, LOW);
 }
+
+void read_buttons(void)
+{
+  if(digitalRead(BUTTON_1_PIN) == LOW)
+  {
+    switch(STATE)
+    {
+      case STATE_FAN_ON:
+      {
+        go_to_state(STATE_CONFIG);
+        break;
+      }
+      case STATE_FAN_OFF:
+      {
+        go_to_state(STATE_CONFIG);
+        break;
+      }
+      case STATE_CONFIG:
+      {
+        modify_config_time();
+        break;
+      }
+      default:
+      {
+        break;
+      }
+    }
+    return; 
+  }
+  if(digitalRead(BUTTON_2_PIN) == LOW)
+  {
+    switch(STATE)
+    {
+      case STATE_FAN_ON:
+      {
+        set_clock(0, 0, 0);
+        break;
+      }
+      case STATE_FAN_OFF:
+      {
+        set_clock(0, 0, 0);
+        break;
+      }
+      case STATE_CONFIG:
+      {
+        CONFIG_INDEX ++;
+        if(CONFIG_INDEX >= 12)
+        {
+          upload_times_to_eeprom(T_ON_SECONDS, T_ON_MINUTES, T_ON_HOURS, T_OFF_SECONDS, T_OFF_MINUTES, T_OFF_HOURS);
+          display.clearDisplay();
+          display.setTextSize(1);
+          display.setCursor(0,0);
+          display.print("Data updated!");
+          display.setCursor(0,12);
+          display.print("Time ON:  ");  
+          display.print(T_ON_HOURS / 10);
+          display.print(T_ON_HOURS % 10);
+          display.print(":");
+          display.print(T_ON_MINUTES / 10);
+          display.print(T_ON_MINUTES % 10);
+          display.print(":");
+          display.print(T_ON_SECONDS / 10);
+          display.print(T_ON_SECONDS % 10);
+          display.setCursor(0,20);
+          display.print("Time OFF: "); 
+          display.print(T_OFF_HOURS / 10);  
+          display.print(T_OFF_HOURS % 10);  
+          display.print(":");
+          display.print(T_OFF_MINUTES / 10); 
+          display.print(T_OFF_MINUTES % 10);
+          display.print(":");
+          display.print(T_OFF_SECONDS / 10);
+          display.print(T_OFF_SECONDS % 10);
+          display.display(); 
+          display.display();
+          delay(1000);
+          load_times_from_eeprom();
+          go_to_state(STATE_FAN_OFF);
+        }
+        break;
+      }
+      default:
+      {
+        break;
+      }
+    }
+    return; 
+  }
+  if(digitalRead(BUTTON_3_PIN) == LOW)
+  {
+    if(STATE == STATE_FAN_ON || STATE == STATE_FAN_OFF)
+    {
+      set_clock(0, 0, 0);
+    }
+    return; 
+  }
+}
+
+void modify_config_time(void)
+{
+  if(STATE != STATE_CONFIG)
+  {
+    return;
+  }
+  switch(CONFIG_INDEX)
+  {
+    case CONFIG_INDEX_T_ON_H_MSD:
+    {
+      T_ON_HOURS += 10;
+      if(T_ON_HOURS >= 99)
+      {
+        T_ON_HOURS -= 100;
+      }
+      break;
+    }
+    case CONFIG_INDEX_T_ON_H_LSD:
+    {
+      T_ON_HOURS ++;
+      if(T_ON_HOURS % 10 == 0)
+      {
+        T_ON_HOURS -= 10;
+      }
+      break;
+    }
+    case CONFIG_INDEX_T_ON_M_MSD:
+    {
+      T_ON_MINUTES += 10;
+      if(T_ON_MINUTES >= 59)
+      {
+        T_ON_MINUTES -= 60;
+      }
+      break;
+    }
+    case CONFIG_INDEX_T_ON_M_LSD:
+    {
+      T_ON_MINUTES ++;
+      if(T_ON_MINUTES % 10 == 0)
+      {
+        T_ON_MINUTES -= 10;
+      }
+      break;
+    }
+    case CONFIG_INDEX_T_ON_S_MSD:
+    {
+      T_ON_SECONDS += 10;
+      if(T_ON_SECONDS >= 59)
+      {
+        T_ON_SECONDS -= 60;
+      }
+      break;
+    }
+    case CONFIG_INDEX_T_ON_S_LSD:
+    {
+      T_ON_SECONDS ++;
+      if(T_ON_SECONDS % 10 == 0)
+      {
+        T_ON_SECONDS -= 10;
+      }
+      break;
+    }
+    case CONFIG_INDEX_T_OFF_H_MSD:
+    {
+      T_OFF_HOURS += 10;
+      if(T_OFF_HOURS >= 99)
+      {
+        T_OFF_HOURS -= 100;
+      }
+      break;
+    }
+    case CONFIG_INDEX_T_OFF_H_LSD:
+    {
+      T_OFF_HOURS ++;
+      if(T_OFF_HOURS % 10 == 0)
+      {
+        T_OFF_HOURS -= 10;
+      }
+      break;
+    }
+    case CONFIG_INDEX_T_OFF_M_MSD:
+    {
+      T_OFF_MINUTES += 10;
+      if(T_OFF_MINUTES >= 59)
+      {
+        T_OFF_MINUTES -= 60;
+      }
+      break;
+    }
+    case CONFIG_INDEX_T_OFF_M_LSD:
+    {
+      T_OFF_MINUTES ++;
+      if(T_OFF_MINUTES % 10 == 0)
+      {
+        T_OFF_MINUTES -= 10;
+      }
+      break;
+    }
+    case CONFIG_INDEX_T_OFF_S_MSD:
+    {
+      T_OFF_SECONDS += 10;
+      if(T_OFF_SECONDS >= 59)
+      {
+        T_OFF_SECONDS -= 60;
+      }
+      break;
+    }
+    case CONFIG_INDEX_T_OFF_S_LSD:
+    {
+      T_OFF_SECONDS ++;
+      if(T_OFF_SECONDS % 10 == 0)
+      {
+        T_OFF_SECONDS -= 10;
+      }
+      break;
+    }
+  }
+}
+
 
 
