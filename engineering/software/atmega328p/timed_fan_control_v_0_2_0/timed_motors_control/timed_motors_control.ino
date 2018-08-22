@@ -20,8 +20,8 @@
 #define MOTOR_6_PIN 11  // digital pin used to command driver for motor 6 (PB3)
 
 // BUTTONS HARDWARE SETTINGS
-#define BUTTON_1_PIN 4  // digital pin used to read button state (PD4) - used to select value
-#define BUTTON_2_PIN 7  // digital pin used to read button state (PD7) - used to change value
+#define BUTTON_1_PIN 4  // digital pin used to read button state (PD4) - used to change selected config value
+#define BUTTON_2_PIN 7  // digital pin used to read button state (PD7) - used to select next config value
 #define BUTTON_3_PIN 8  // digital pin used to read button state (PB0) - used to reset internal timer
 
 // DISPLAY HARDWARE SETTINGS
