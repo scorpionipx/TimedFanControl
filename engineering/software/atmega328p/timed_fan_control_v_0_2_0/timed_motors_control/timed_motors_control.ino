@@ -1,10 +1,10 @@
 // APPLICATION SETTINGS
-#define DEFAULT_MOTOR_POWER 10   // default power for motor control (max 10)
+#define DEFAULT_MOTOR_POWER 10    // default power for motor control (max 10)
 
 #define IDLE_TIME_THRESHOLD 30    // time to wait (in seconds) before machine goes into idle state (for improving power consumption)
 
-#define DEFAULT_T_ON_SECONDS 0    // default time to keep motors powered on
-#define DEFAULT_T_ON_MINUTES 4
+#define DEFAULT_T_ON_SECONDS 30   // default time to keep motors powered on
+#define DEFAULT_T_ON_MINUTES 2
 #define DEFAULT_T_ON_HOURS 0
 
 #define DEFAULT_T_OFF_SECONDS 0   // default time to keep motors powered off
@@ -20,8 +20,8 @@
 #define MOTOR_6_PIN 11  // digital pin used to command driver for motor 6 (PB3)
 
 // BUTTONS HARDWARE SETTINGS
-#define BUTTON_1_PIN 4  // digital pin used to read button state (PD4) - used to select value
-#define BUTTON_2_PIN 7  // digital pin used to read button state (PD7) - used to change value
+#define BUTTON_1_PIN 4  // digital pin used to read button state (PD4) - used to change selected config value
+#define BUTTON_2_PIN 7  // digital pin used to read button state (PD7) - used to select next config value
 #define BUTTON_3_PIN 8  // digital pin used to read button state (PB0) - used to reset internal timer
 
 // DISPLAY HARDWARE SETTINGS
@@ -38,7 +38,7 @@
 #define TURN_ON_LED  (digitalWrite(LED, HIGH))
 #define TURN_OFF_LED (digitalWrite(LED, LOW))
 
-#define __100_MS__ 100
+#define __100_MS__ 100  // clock frequency dependent
 
 // STATE MACHINE
 #define STATE_ERROR       99  // internal error
@@ -67,33 +67,33 @@
 #define MOTORS_ENABLED_EEPROM_ADDRESS 0x0C  // store & load EEPROM adresses
 
 // APPLICATION INNER SETTING
-#define CONFIG_INDEX_T_ON_H_MSD 0
-#define CONFIG_INDEX_T_ON_H_LSD 1
-#define CONFIG_INDEX_T_ON_M_MSD 2
-#define CONFIG_INDEX_T_ON_M_LSD 3
-#define CONFIG_INDEX_T_ON_S_MSD 4
-#define CONFIG_INDEX_T_ON_S_LSD 5
+#define CONFIG_INDEX_T_ON_H_MSD 0        // index used to track selected config value
+#define CONFIG_INDEX_T_ON_H_LSD 1        // index used to track selected config value
+#define CONFIG_INDEX_T_ON_M_MSD 2        // index used to track selected config value
+#define CONFIG_INDEX_T_ON_M_LSD 3        // index used to track selected config value
+#define CONFIG_INDEX_T_ON_S_MSD 4        // index used to track selected config value
+#define CONFIG_INDEX_T_ON_S_LSD 5        // index used to track selected config value
 
-#define CONFIG_INDEX_T_OFF_H_MSD 6
-#define CONFIG_INDEX_T_OFF_H_LSD 7
-#define CONFIG_INDEX_T_OFF_M_MSD 8
-#define CONFIG_INDEX_T_OFF_M_LSD 9
-#define CONFIG_INDEX_T_OFF_S_MSD 10
-#define CONFIG_INDEX_T_OFF_S_LSD 11
+#define CONFIG_INDEX_T_OFF_H_MSD 6       // index used to track selected config value
+#define CONFIG_INDEX_T_OFF_H_LSD 7       // index used to track selected config value
+#define CONFIG_INDEX_T_OFF_M_MSD 8       // index used to track selected config value
+#define CONFIG_INDEX_T_OFF_M_LSD 9       // index used to track selected config value
+#define CONFIG_INDEX_T_OFF_S_MSD 10      // index used to track selected config value
+#define CONFIG_INDEX_T_OFF_S_LSD 11      // index used to track selected config value
 
-#define CONFIG_INDEX_MOTOR_1_ENABLED 12
-#define CONFIG_INDEX_MOTOR_2_ENABLED 13
-#define CONFIG_INDEX_MOTOR_3_ENABLED 14
-#define CONFIG_INDEX_MOTOR_4_ENABLED 15
-#define CONFIG_INDEX_MOTOR_5_ENABLED 16
-#define CONFIG_INDEX_MOTOR_6_ENABLED 17
+#define CONFIG_INDEX_MOTOR_1_ENABLED 12  // index used to track selected config value
+#define CONFIG_INDEX_MOTOR_2_ENABLED 13  // index used to track selected config value
+#define CONFIG_INDEX_MOTOR_3_ENABLED 14  // index used to track selected config value
+#define CONFIG_INDEX_MOTOR_4_ENABLED 15  // index used to track selected config value
+#define CONFIG_INDEX_MOTOR_5_ENABLED 16  // index used to track selected config value
+#define CONFIG_INDEX_MOTOR_6_ENABLED 17  // index used to track selected config value
 
-#define CONFIG_INDEX_MOTOR_1_POWER 18
-#define CONFIG_INDEX_MOTOR_2_POWER 19
-#define CONFIG_INDEX_MOTOR_3_POWER 20
-#define CONFIG_INDEX_MOTOR_4_POWER 21
-#define CONFIG_INDEX_MOTOR_5_POWER 22
-#define CONFIG_INDEX_MOTOR_6_POWER 23
+#define CONFIG_INDEX_MOTOR_1_POWER 18    // index used to track selected config value
+#define CONFIG_INDEX_MOTOR_2_POWER 19    // index used to track selected config value
+#define CONFIG_INDEX_MOTOR_3_POWER 20    // index used to track selected config value
+#define CONFIG_INDEX_MOTOR_4_POWER 21    // index used to track selected config value
+#define CONFIG_INDEX_MOTOR_5_POWER 22    // index used to track selected config value
+#define CONFIG_INDEX_MOTOR_6_POWER 23    // index used to track selected config value
 
 #define MOTOR_MAX_POWER 10
 
@@ -129,7 +129,7 @@ struct boolean_struct
    unsigned short MOTOR_5_ENABLED_ : 1;  // motor 5 enabled status
    unsigned short MOTOR_6_ENABLED_ : 1;  // motor 6 enabled status
    unsigned short DISPLAY_IS_ON_ : 1;    // display power status
-   unsigned short INVALID_EEPROM_DATA_ : 1;
+   unsigned short INVALID_EEPROM_DATA_ : 1;  // invalid EEPROM data
 } BOOLEAN;                                // bit field struct to store boolean values
 
 #define MOTOR_1_ENABLED BOOLEAN.MOTOR_1_ENABLED_
@@ -143,9 +143,9 @@ struct boolean_struct
 
 #define ALL_MOTORS_ENABLED 0b00111111
 
-int STATE = STATE_INIT;    // initial state at power up
-int CONFIG_INDEX = -1;
-unsigned short CONFIG_INDEX_SHOWED = TRUE;
+int STATE = STATE_INIT;  // initial state at power up
+int CONFIG_INDEX = -1;   // index used to track selected config value; -1 => application is not in config state
+unsigned short CONFIG_INDEX_SHOWED = TRUE;  // used to blink selected config value
 
 unsigned short T_ON_SECONDS = DEFAULT_T_ON_SECONDS;    // time amount to keep fans turned on
 unsigned short T_ON_MINUTES = DEFAULT_T_ON_MINUTES;    // time amount to keep fans turned on
@@ -162,8 +162,8 @@ unsigned short MOTOR_4_POWER = DEFAULT_MOTOR_POWER;
 unsigned short MOTOR_5_POWER = DEFAULT_MOTOR_POWER;
 unsigned short MOTOR_6_POWER = DEFAULT_MOTOR_POWER;
 
-unsigned short counter_100_ms = 0;
-unsigned short idle_counter = 0;
+unsigned short counter_100_ms = 0;  // incremented every 100ms
+unsigned short idle_counter = 0;    // incremented every second - applications goes to low power consumption mode if IDLE_TIME_THRESHOLD erached
 
 void setup() 
 {
