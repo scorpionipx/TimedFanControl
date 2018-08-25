@@ -25,7 +25,7 @@
 #define BUTTON_3_PIN 8  // digital pin used to read button state (PB0) - used to reset internal timer
 
 // DISPLAY HARDWARE SETTINGS
-#define DISPLAY_SWITCH_PIN 2  // digital pin used to control display's power switch
+#define DISPLAY_SWITCH_PIN 2  // digital pin used to control display's power switch (PD2)
 
 // GENERIC
 #define TRUE 1
